@@ -116,6 +116,11 @@ class PDFPageView {
     div.setAttribute("data-page-number", this.id);
     this.div = div;
 
+    // context Canvas
+    this.canvas = null;
+    // Ben.k.yu annotation Canvas
+    this.annotaionCanvas = null;
+
     container.appendChild(div);
   }
 
@@ -563,6 +568,9 @@ class PDFPageView {
 
     const viewport = this.viewport;
     const canvas = document.createElement("canvas");
+    // Ben.k.yu annotation Canvas
+    const annotaionCanvas = document.createElement("canvas");
+
     this.l10n
       .get("page_canvas", { page: this.id }, "Page {{page}}")
       .then(msg => {
@@ -572,10 +580,12 @@ class PDFPageView {
     // Keep the canvas hidden until the first draw callback, or until drawing
     // is complete when `!this.renderingQueue`, to prevent black flickering.
     canvas.setAttribute("hidden", "hidden");
+    annotaionCanvas.setAttribute("hidden", "hidden");
     let isCanvasHidden = true;
     const showCanvas = function () {
       if (isCanvasHidden) {
         canvas.removeAttribute("hidden");
+        annotaionCanvas.removeAttribute("hidden");
         isCanvasHidden = false;
       }
     };
@@ -625,12 +635,31 @@ class PDFPageView {
     // Add the viewport so it's known what it was originally drawn with.
     this.paintedViewportMap.set(canvas, viewport);
 
+    // Ben.k.yu annotationCanvas
+    canvasWrapper.appendChild(annotaionCanvas);
+    this.annotaionCanvas = annotaionCanvas;
+    const annotationCtx = annotaionCanvas.getContext("2d", { alpha: true });
+    annotaionCanvas.setAttribute("aria-label", `${this.id} page annotation`);
+    annotaionCanvas.setAttribute("annotation-canvas", "annotation-canvas");
+    annotaionCanvas.width = roundToDivide(
+      viewport.width * outputScale.sx,
+      sfx[0]
+    );
+    annotaionCanvas.height = roundToDivide(
+      viewport.height * outputScale.sy,
+      sfy[0]
+    );
+    annotaionCanvas.style.width = roundToDivide(viewport.width, sfx[1]) + "px";
+    annotaionCanvas.style.height =
+      roundToDivide(viewport.height, sfy[1]) + "px";
+
     // Rendering area
     const transform = !outputScale.scaled
       ? null
       : [outputScale.sx, 0, 0, outputScale.sy, 0, 0];
     const renderContext = {
       canvasContext: ctx,
+      annotationCanvasContext: annotationCtx,
       transform,
       viewport: this.viewport,
       enableWebGL: this.enableWebGL,

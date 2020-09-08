@@ -182,18 +182,25 @@ function getViewerConfiguration() {
     printContainer: document.getElementById("printContainer"),
     openFileInputName: "fileInput",
     debuggerScriptPath: "./debugger.js",
+
+    testPanel: {
+      // Buttons
+      insertSquare: document.getElementById("insertSquare"),
+    },
   };
 }
 
 function webViewerLoad() {
   const config = getViewerConfiguration();
+
   if (typeof PDFJSDev === "undefined" || !PDFJSDev.test("PRODUCTION")) {
     Promise.all([
       import("pdfjs-web/app.js"),
       import("pdfjs-web/app_options.js"),
       import("pdfjs-web/genericcom.js"),
       import("pdfjs-web/pdf_print_service.js"),
-    ]).then(function ([app, appOptions, genericCom, pdfPrintService]) {
+      import("pdf-lib"),
+    ]).then(function ([app, appOptions, genericCom, pdfPrintService, PDFLib]) {
       window.PDFViewerApplication = app.PDFViewerApplication;
       window.PDFViewerApplicationOptions = appOptions.AppOptions;
       app.PDFViewerApplication.run(config);

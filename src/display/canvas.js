@@ -440,6 +440,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
   // eslint-disable-next-line no-shadow
   function CanvasGraphics(
     canvasCtx,
+    annotationCanvasCtx,
     commonObjs,
     objs,
     canvasFactory,
@@ -447,6 +448,8 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
     imageLayer
   ) {
     this.ctx = canvasCtx;
+    this.mainCtx = canvasCtx;
+    this.annotationCtx = annotationCanvasCtx;
     this.current = new CanvasExtraState();
     this.stateStack = [];
     this.pendingClip = null;
@@ -473,6 +476,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       // NOTE: if mozCurrentTransform is polyfilled, then the current state of
       // the transformation must already be set in canvasCtx._transformMatrix.
       addContextCurrentTransform(canvasCtx);
+      addContextCurrentTransform(annotationCanvasCtx);
     }
     this._cachedGetSinglePixelWidth = null;
   }
@@ -807,41 +811,56 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       // backdrop. The problem with a transparent backdrop though is we then
       // don't get sub pixel anti aliasing on text, creating temporary
       // transparent canvas when we have blend modes.
-      var width = this.ctx.canvas.width;
-      var height = this.ctx.canvas.height;
 
-      this.ctx.save();
-      this.ctx.fillStyle = background || "rgb(255, 255, 255)";
-      this.ctx.fillRect(0, 0, width, height);
-      this.ctx.restore();
+      // Ben.k.yu 캔버스 컨텍스트 초기화 부분 분리 annotation 용도 추가하기 위함
+      function initCanvas() {
+        var width = this.ctx.canvas.width;
+        var height = this.ctx.canvas.height;
 
-      if (transparency) {
-        var transparentCanvas = this.cachedCanvases.getCanvas(
-          "transparent",
-          width,
-          height,
-          true
-        );
-        this.compositeCtx = this.ctx;
-        this.transparentCanvas = transparentCanvas.canvas;
-        this.ctx = transparentCanvas.context;
         this.ctx.save();
-        // The transform can be applied before rendering, transferring it to
-        // the new canvas.
-        this.ctx.transform.apply(
-          this.ctx,
-          this.compositeCtx.mozCurrentTransform
-        );
+        // this.ctx.fillStyle = background || "rgb(255, 255, 255)";
+        // this.ctx.fillRect(0, 0, width, height);
+        // this.ctx.restore();
+
+        if (this.isAnnotations) {
+          this.ctx.clearRect(0, 0, width, height);
+        } else {
+          this.ctx.fillStyle = background || "rgb(255, 255, 255)";
+          this.ctx.fillRect(0, 0, width, height);
+        }
+        this.ctx.restore();
+
+        if (transparency) {
+          var transparentCanvas = this.cachedCanvases.getCanvas(
+            "transparent",
+            width,
+            height,
+            true
+          );
+          this.compositeCtx = this.ctx;
+          this.transparentCanvas = transparentCanvas.canvas;
+          this.ctx = transparentCanvas.context;
+          this.ctx.save();
+          // The transform can be applied before rendering, transferring it to
+          // the new canvas.
+          this.ctx.transform.apply(
+            this.ctx,
+            this.compositeCtx.mozCurrentTransform
+          );
+        }
+
+        this.ctx.save();
+        resetCtxToDefault(this.ctx);
+        if (transform) {
+          this.ctx.transform.apply(this.ctx, transform);
+        }
+        this.ctx.transform.apply(this.ctx, viewport.transform);
+
+        this.baseTransform = this.ctx.mozCurrentTransform.slice();
       }
 
-      this.ctx.save();
-      resetCtxToDefault(this.ctx);
-      if (transform) {
-        this.ctx.transform.apply(this.ctx, transform);
-      }
-      this.ctx.transform.apply(this.ctx, viewport.transform);
-
-      this.baseTransform = this.ctx.mozCurrentTransform.slice();
+      initCanvas.call({ ctx: this.ctx });
+      initCanvas.call({ ctx: this.annotationCtx, isAnnotations: true });
 
       if (this.imageLayer) {
         this.imageLayer.beginLayout();
@@ -2079,6 +2098,9 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
 
     beginAnnotations: function CanvasGraphics_beginAnnotations() {
       this.save();
+      // Ben.k.yu change ctx
+      this.ctx = this.annotationCtx;
+
       if (this.baseTransform) {
         this.ctx.setTransform.apply(this.ctx, this.baseTransform);
       }
@@ -2086,6 +2108,9 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
 
     endAnnotations: function CanvasGraphics_endAnnotations() {
       this.restore();
+
+      // Ben.k.yu restore main ctx
+      this.ctx = this.mainCtx;
     },
 
     beginAnnotation: function CanvasGraphics_beginAnnotation(

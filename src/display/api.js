@@ -996,6 +996,7 @@ class PDFPageProxy {
    */
   render({
     canvasContext,
+    annotationCanvasContext,
     viewport,
     intent = "display",
     enableWebGL = false,
@@ -1085,6 +1086,7 @@ class PDFPageProxy {
       // Only include the required properties, and *not* the entire object.
       params: {
         canvasContext,
+        annotationCanvasContext,
         viewport,
         transform,
         imageLayer,
@@ -2650,6 +2652,7 @@ const InternalRenderTask = (function InternalRenderTaskClosure() {
       this._scheduleNextBound = this._scheduleNext.bind(this);
       this._nextBound = this._next.bind(this);
       this._canvas = params.canvasContext.canvas;
+      this._AnnotationCanvas = params.annotationCanvasContext.canvas;
     }
 
     get completed() {
@@ -2685,6 +2688,7 @@ const InternalRenderTask = (function InternalRenderTaskClosure() {
       }
       const {
         canvasContext,
+        annotationCanvasContext,
         viewport,
         transform,
         imageLayer,
@@ -2693,6 +2697,7 @@ const InternalRenderTask = (function InternalRenderTaskClosure() {
 
       this.gfx = new CanvasGraphics(
         canvasContext,
+        annotationCanvasContext,
         this.commonObjs,
         this.objs,
         this.canvasFactory,

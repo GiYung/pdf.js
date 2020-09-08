@@ -70,9 +70,11 @@ import { PDFPresentationMode } from "./pdf_presentation_mode.js";
 import { PDFSidebarResizer } from "./pdf_sidebar_resizer.js";
 import { PDFThumbnailViewer } from "./pdf_thumbnail_viewer.js";
 import { PDFViewer } from "./pdf_viewer.js";
+import { POPDFEditor } from "./po_pdf_editor.js";
 import { SecondaryToolbar } from "./secondary_toolbar.js";
 import { Toolbar } from "./toolbar.js";
 import { ViewHistory } from "./view_history.js";
+import { TESTPanel } from "./po_pdf_testpanel.js";
 
 const DEFAULT_SCALE_DELTA = 1.1;
 const DISABLE_AUTO_FETCH_LOADING_BAR_TIMEOUT = 5000; // ms
@@ -235,6 +237,12 @@ const PDFViewerApplication = {
   _boundEvents: {},
   contentDispositionFilename: null,
   triggerDelayedFallback: null,
+
+  // insert pdflib
+  /** @type {POPDFEditor} */
+  poPDFEditor: null,
+  /** @type {TESTPanel} */
+  testPanel: null,
 
   // Called once when the document is loaded.
   async initialize(appConfig) {
@@ -522,6 +530,14 @@ const PDFViewerApplication = {
       eventBus,
       this.l10n
     );
+
+    // pdf-lib
+    this.poPDFEditor = new POPDFEditor({ pdfViewer: this.pdfViewer, eventBus });
+
+    this.testPanel = new TESTPanel({
+      elements: appConfig.testPanel,
+      eventBus,
+    });
   },
 
   run(config) {
@@ -761,6 +777,11 @@ const PDFViewerApplication = {
    *                      is opened.
    */
   async open(file, args) {
+    if (typeof file === "string") {
+      // load pdf-lib
+      file = await this.poPDFEditor.open(file);
+    }
+
     if (this.pdfLoadingTask) {
       // We need to destroy already opened document.
       await this.close();
@@ -1696,6 +1717,8 @@ const PDFViewerApplication = {
       eventBus._on("fileinputchange", webViewerFileInputChange);
       eventBus._on("openfile", webViewerOpenFile);
     }
+
+    eventBus._on("testReopenViewer", testReopenViewer);
   },
 
   bindWindowEvents() {
@@ -2180,6 +2203,12 @@ function webViewerSpreadModeChanged(evt) {
     // Only update the storage when the document has been loaded *and* rendered.
     store.set("spreadMode", evt.mode).catch(function () {});
   }
+}
+
+function testReopenViewer({ byteArray }) {
+  console.log("%c testReopenViewer ", "background: #222; color: #bada55", this);
+
+  PDFViewerApplication.open(byteArray);
 }
 
 function webViewerResize() {
