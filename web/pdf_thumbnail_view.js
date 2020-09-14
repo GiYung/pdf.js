@@ -344,6 +344,7 @@ class PDFThumbnailView {
 
     const renderContext = {
       canvasContext: ctx,
+      annotationCanvasContext: ctx,
       viewport: drawViewport,
     };
     const renderTask = (this.renderTask = pdfPage.render(renderContext));

@@ -476,7 +476,9 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       // NOTE: if mozCurrentTransform is polyfilled, then the current state of
       // the transformation must already be set in canvasCtx._transformMatrix.
       addContextCurrentTransform(canvasCtx);
-      addContextCurrentTransform(annotationCanvasCtx);
+      if (canvasCtx !== annotationCanvasCtx) {
+        addContextCurrentTransform(annotationCanvasCtx);
+      }
     }
     this._cachedGetSinglePixelWidth = null;
   }
@@ -860,7 +862,9 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       }
 
       initCanvas.call({ ctx: this.ctx });
-      initCanvas.call({ ctx: this.annotationCtx, isAnnotations: true });
+      if (this.mainCtx !== this.annotationCtx) {
+        initCanvas.call({ ctx: this.annotationCtx, isAnnotations: true });
+      }
 
       if (this.imageLayer) {
         this.imageLayer.beginLayout();
@@ -1845,6 +1849,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
         var canvasGraphicsFactory = {
           createCanvasGraphics: ctx => {
             return new CanvasGraphics(
+              ctx,
               ctx,
               this.commonObjs,
               this.objs,
